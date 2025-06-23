@@ -40,43 +40,62 @@
                                     (reverse exprs)
                                     (loop (cons expr exprs))))))))
 
-(define* (analyze-package p)
-  `((name ,(car (assoc-ref p
-                           'name)))
-    (version ,(car (assoc-ref p
-                              'version)))
-    (synopsis ,(car (assoc-ref p
-                               'synopsis)))
-    (description ,(car (assoc-ref p
-                                  'description)))))
+(define* (analyze-package p
+                          #:key (is-let? #f))
+  (when is-let?
+    (begin
+      (newline)
+      (write p)
+      (newline)))
+  `((name ,(assoc-ref p
+                      'name))
+    (version ,(assoc-ref p
+                         'version))
+    (synopsis ,(assoc-ref p
+                          'synopsis))
+    (description ,(assoc-ref p
+                             'description))))
 
 (define* (analyze-let-package p)
-  (analyze-package '()))
+  (let* ((pp (cdr (caddr (caddr p)))))
+    (analyze-package pp
+                     #:is-let? #t)))
 
 (define (safe-analyze-package p)
   (catch #t
          (lambda ()
-           (analyze-package (caddr p)))
+           (analyze-package (caddr p)
+                            #:is-let? #f))
          (lambda (key . args)
-           ;; (display (format #f "\nerror analyzing package: ~a: ~a\n" key args))
-           ;; (analyze-let-package p)
-           #f)))
+           (display (format #f "error: ~a: ~a" key args))
+           (analyze-let-package p))))
+
+(define (cond-rend x label)
+  (when (not (equal? #f x))
+    (display (format #f "\n~a: ~a" label
+                     (car x)))))
+
+(define (cond-car x)
+  (when (not (equal? #f x))
+    (car x)))
 
 (define* (display-package-details details)
-  (display "\n===================")
-
-  (display (format #f "\nname: ~a"
-                   (car (assoc-ref details
-                                   'name))))
-  (display (format #f "\nversion: ~a"
-                   (car (assoc-ref details
-                                   'version))))
-  (display (format #f "\nsynopsis: ~a"
-                   (car (assoc-ref details
-                                   'synopsis))))
-  (display (format #f "\ndescription: ~a"
-                   (car (assoc-ref details
-                                   'description)))))
+  (when (not (equal? #f
+                     (assoc-ref details
+                                'name)))
+    (display "\n===================="))
+  (cond-rend (cond-car (assoc-ref details
+                                  'name))
+             'name)
+  (cond-rend (cond-car (assoc-ref details
+                                  'version))
+             'version)
+  (cond-rend (cond-car (assoc-ref details
+                                  'synopsis))
+             'synopsis)
+  (cond-rend (cond-car (assoc-ref details
+                                  'description))
+             'description))
 
 (define (main)
   (display "\nStarting Guile Show Hub")
@@ -88,10 +107,12 @@
                                            (car s)))
                                  (read-all-sexps-from-string raw-str)))
          (package-details (filter (lambda (p)
-                                    (not (equal? #f p)))
+                                    (and (not (equal? '() p))
+                                         (not (equal? #f p))))
                                   (map safe-analyze-package guile-packages))))
     (display (format #f "
 Parsed ~a package s-expressions from guile-xyz.scm"
                      (length package-details)))
 
-    (map display-package-details package-details)))
+    (map display-package-details
+         (list-head package-details 50))))
