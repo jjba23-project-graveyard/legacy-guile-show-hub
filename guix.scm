@@ -8,6 +8,7 @@
               #:select (with-directory-excursion ))
              (gnu packages)
              (gnu packages guile)
+             (gnu packages curl)
              (gnu packages guile-xyz))
 
 (define %source-dir
@@ -15,7 +16,7 @@
 
 (package
   (name "guile-show-hub")
-  (version "0.0.1")
+  (version "0.0.2")
   (source
    (local-file %source-dir
                #:recursive? #t
@@ -38,10 +39,10 @@
                       (install-file "scripts/guile-show-hub" bin)
                       (install-file "scripts/log.sh"
                                     (string-append share "/scripts/"))
-                      (chmod (string-append bin "/ggg") #o755)))))))
+                      (chmod (string-append bin "/guile-show-hub") #o755)))))))
   (build-system guile-build-system)
   (native-inputs (list guile-3.0))
-  (inputs (list guile-3.0))
+  (inputs (list guile-3.0 guile-curl))
   (synopsis
    "")
   (description
