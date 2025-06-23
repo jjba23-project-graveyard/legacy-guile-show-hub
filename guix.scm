@@ -41,7 +41,7 @@
                                     (string-append share "/scripts/"))
                       (chmod (string-append bin "/guile-show-hub") #o755)))))))
   (build-system guile-build-system)
-  (native-inputs (list guile-3.0))
+  (native-inputs (list guile-3.0 guile-curl))
   (inputs (list guile-3.0 guile-curl))
   (synopsis
    "")
