@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR=$(dirname "$0")
+STORE_DIR=$(readlink -f "$SCRIPT_DIR/..")
+SCHEME_SOURCES_DIR="$STORE_DIR/share/guile/site/3.0"
+RESOURCES_DIR="$STORE_DIR/share/resources"
+SCRIPTS_DIR="$STORE_DIR/share/scripts"
+
+source "$SCRIPTS_DIR/log.sh"
+
+show-help() {
+    cat "$RESOURCES_DIR/help.txt"
+}
+
+GUILE_CMD_ARGS=(
+  "-L" "$SCHEME_SOURCES_DIR"
+  "-c" "((@(guile-show-hub main) main))"
+)
+
+
+log-info "Running Guile command: guile ${GUILE_CMD_ARGS[*]}"
+exec guile "${GUILE_CMD_ARGS[@]}"
