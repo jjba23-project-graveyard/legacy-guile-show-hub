@@ -25,16 +25,19 @@
              (gnu packages gnupg)
              (gnu packages guile-xyz)
              (gnu packages curl)
+             (guix gexp)
              (gnu packages pkg-config)
              (guix build-system guile)
              (gnu packages linux)
              (gnu packages compression)
              (gnu packages texinfo)
              (gnu packages autotools)
+             (gnu packages package-management)
              ((guix licenses)
               #:prefix license:))
 
 (packages->manifest (list (specification->package "make")
+                          guix
                           guile-next
                           guile-curl
                           guile-ares-rs))
