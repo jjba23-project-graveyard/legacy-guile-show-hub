@@ -3,6 +3,7 @@
   #:use-module (curl)
   #:use-module (ice-9 string-fun)
   #:use-module (rnrs bytevectors)
+  #:use-module (srfi srfi-1)
   #:use-module (ice-9 local-eval)
   #:use-module (guix gexp)
   #:export (main))
@@ -36,8 +37,27 @@
                               ((exprs '()))
                               (let ((expr (read port)))
                                 (if (eof-object? expr)
-                                    (reverse exprs) ;Reverse to maintain original order
+                                    (reverse exprs)
                                     (loop (cons expr exprs))))))))
+
+(define (analyze-package s)
+  (display "\n===================")
+
+  (display (format #f "\nname: ~a"
+                   (car (assoc-ref (caddr s)
+                                   'name))))
+  (display (format #f "\nversion: ~a"
+                   (car (assoc-ref (caddr s)
+                                   'version))))
+  (display (format #f "\nsynopsis: ~a"
+                   (car (assoc-ref (caddr s)
+                                   'synopsis))))
+  (display (format #f "\ndescription: ~a"
+                   (car (assoc-ref (caddr s)
+                                   'description)))))
+
+(define (analyze-let-package s)
+  (analyze-package (caddr s)))
 
 (define (main)
   (display "\nStarting Guile Show Hub")
@@ -45,14 +65,19 @@
                    (guile-xyz-uri)))
   (let* ((raw-str (do-fetch (guile-xyz-uri)))
          (guile-packages (filter (lambda (s)
-                      (equal? 'define-public
-                              (car s)))
-                    (read-all-sexps-from-string raw-str))))
+                                   (equal? 'define-public
+                                           (car s)))
+                                 (read-all-sexps-from-string raw-str))))
     (display (format #f "
 Parsed ~a package s-expressions from guile-xyz.scm"
                      (length guile-packages)))
-    (for-each (lambda (s)                
-                (display (format #f "\nFound package: ~a"
-                                 (cadr s))))
-              (list-head guile-packages 1))))
-
+    (for-each (lambda (s)
+                (catch #t
+                       (lambda ()
+                         (analyze-package s))
+                       (lambda (key . args)
+                         (display (format #f "\nerror analyzing package: ~a: ~a\n"
+                                          key args))
+                         (analyze-let-package s))))
+              (list-head guile-packages 10))
+    (display "\n===================")))
