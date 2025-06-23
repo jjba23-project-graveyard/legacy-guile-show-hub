@@ -40,24 +40,43 @@
                                     (reverse exprs)
                                     (loop (cons expr exprs))))))))
 
-(define (analyze-package s)
+(define* (analyze-package p)
+  `((name ,(car (assoc-ref p
+                           'name)))
+    (version ,(car (assoc-ref p
+                              'version)))
+    (synopsis ,(car (assoc-ref p
+                               'synopsis)))
+    (description ,(car (assoc-ref p
+                                  'description)))))
+
+(define* (analyze-let-package p)
+  (analyze-package '()))
+
+(define (safe-analyze-package p)
+  (catch #t
+         (lambda ()
+           (analyze-package (caddr p)))
+         (lambda (key . args)
+           ;; (display (format #f "\nerror analyzing package: ~a: ~a\n" key args))
+           ;; (analyze-let-package p)
+           #f)))
+
+(define* (display-package-details details)
   (display "\n===================")
 
   (display (format #f "\nname: ~a"
-                   (car (assoc-ref (caddr s)
+                   (car (assoc-ref details
                                    'name))))
   (display (format #f "\nversion: ~a"
-                   (car (assoc-ref (caddr s)
+                   (car (assoc-ref details
                                    'version))))
   (display (format #f "\nsynopsis: ~a"
-                   (car (assoc-ref (caddr s)
+                   (car (assoc-ref details
                                    'synopsis))))
   (display (format #f "\ndescription: ~a"
-                   (car (assoc-ref (caddr s)
+                   (car (assoc-ref details
                                    'description)))))
-
-(define (analyze-let-package s)
-  (analyze-package (caddr s)))
 
 (define (main)
   (display "\nStarting Guile Show Hub")
@@ -67,17 +86,12 @@
          (guile-packages (filter (lambda (s)
                                    (equal? 'define-public
                                            (car s)))
-                                 (read-all-sexps-from-string raw-str))))
+                                 (read-all-sexps-from-string raw-str)))
+         (package-details (filter (lambda (p)
+                                    (not (equal? #f p)))
+                                  (map safe-analyze-package guile-packages))))
     (display (format #f "
 Parsed ~a package s-expressions from guile-xyz.scm"
-                     (length guile-packages)))
-    (for-each (lambda (s)
-                (catch #t
-                       (lambda ()
-                         (analyze-package s))
-                       (lambda (key . args)
-                         (display (format #f "\nerror analyzing package: ~a: ~a\n"
-                                          key args))
-                         (analyze-let-package s))))
-              (list-head guile-packages 10))
-    (display "\n===================")))
+                     (length package-details)))
+
+    (map display-package-details package-details)))
