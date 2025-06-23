@@ -42,11 +42,6 @@
 
 (define* (analyze-package p
                           #:key (is-let? #f))
-  (when is-let?
-    (begin
-      (newline)
-      (write p)
-      (newline)))
   `((name ,(assoc-ref p
                       'name))
     (version ,(assoc-ref p
@@ -56,19 +51,16 @@
     (description ,(assoc-ref p
                              'description))))
 
-(define* (analyze-let-package p)
-  (let* ((pp (cdr (caddr (caddr p)))))
-    (analyze-package pp
-                     #:is-let? #t)))
-
 (define (safe-analyze-package p)
-  (catch #t
-         (lambda ()
-           (analyze-package (caddr p)
-                            #:is-let? #f))
-         (lambda (key . args)
-           (display (format #f "error: ~a: ~a" key args))
-           (analyze-let-package p))))
+  (let* ((is-let-package (and (list? (caddr p))
+                              (> (length (caddr p)) 0)
+                              (equal? 'let
+                                      (car (caddr p))))))
+    (if is-let-package
+        (analyze-package (caddr (caddr p))
+                         #:is-let? #t)
+        (analyze-package (caddr p)
+                         #:is-let? #f))))
 
 (define (cond-rend x label)
   (when (not (equal? #f x))
@@ -115,4 +107,4 @@ Parsed ~a package s-expressions from guile-xyz.scm"
                      (length package-details)))
 
     (map display-package-details
-         (list-head package-details 50))))
+         (list-head package-details 10))))
