@@ -6,5 +6,5 @@ Showcase in a pretty way all the available Guile packages in the Guix repository
 
 Take periodically data from: https://codeberg.org/guix/guix/raw/branch/master/gnu/packages/guile-xyz.scm
 
-See it at : https://jointhefreeworld.org/guile-show-hub
+See it at : https://jointhefreeworld.org/guile-show-hub/
 
