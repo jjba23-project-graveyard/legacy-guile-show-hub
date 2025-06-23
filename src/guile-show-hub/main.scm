@@ -280,8 +280,16 @@ formatting."
                           #:key (is-let? #f))
   `((name ,(assoc-ref p
                       'name))
-    (version ,(assoc-ref p
-                         'version))
+    (version ,(if is-let?
+                  (format #f "~a"
+                          (cond-car (assoc-ref p
+                                               'version)))
+                  (cond-car (assoc-ref p
+                                       'version))))
+    (home-page ,(assoc-ref p
+                           'home-page))
+    (build-system ,(cond-car (assoc-ref p
+                                        'build-system)))
     (synopsis ,(assoc-ref p
                           'synopsis))
     (description ,(assoc-ref p
@@ -304,44 +312,72 @@ formatting."
                      (car x)))))
 
 (define (cond-car x)
-  (when (not (equal? #f x))
-    (car x)))
+  (if (not (equal? #f x))
+      (car x) x))
 
-(define* (display-package-details details)
-  (when (not (equal? #f
-                     (assoc-ref details
-                                'name)))
-    (display "\n===================="))
-  (cond-rend (cond-car (assoc-ref details
-                                  'name))
-             'name)
-  (cond-rend (cond-car (assoc-ref details
-                                  'version))
-             'version)
-  (cond-rend (cond-car (assoc-ref details
-                                  'synopsis))
-             'synopsis)
-  (cond-rend (cond-car (assoc-ref details
-                                  'description))
-             'description))
+(define (mk-style pairs)
+  (string-join (map (lambda (p)
+                      (format #f "~a: ~a"
+                              (car p)
+                              (cdr p))) pairs) "; "))
 
 (define* (html-package-details details)
-  `((div (@ (style "margin-top: 2.6em;"))
-         (div (@ (style "display: flex; flex-wrap: wrap; gap: 1em;"))
-              (h3 ,(car (assoc-ref details
-                                   'name)))
-              (h5 ,(car (assoc-ref details
+  `((div (@ (style ,(mk-style '((margin-top . "2.6em")))))
+         (div (@ (style ,(mk-style '((display . flex) (flex-wrap . wrap)
+                                     (gap . "1em")))))
+              (div (@ (style ,(mk-style '((display . flex)
+                                          (flex-direction . row)
+                                          (flex-wrap . wrap)
+                                          (align-items . center)
+                                          (gap . "1em")))))
+                   ,(if (car (assoc-ref details
+                                        'home-page))
+                        `((a (@ (style ,(mk-style '((color . unset))))
+                                (href ,(car (assoc-ref details
+                                                       'home-page))))
+                             (h3 ,(car (assoc-ref details
+                                                  'name)))))
+                        `((h3 ,(car (assoc-ref details
+                                               'name)))))
+
+                   (h5 (@ (style ,(mk-style '((font-family . monospace)
+                                              (font-size . "1.2em")))))
+                       ,(assoc-ref details
                                    'version))))
-         ,(if (assoc-ref details
-                         'synopsis)
+         ,(if (car (assoc-ref details
+                              'synopsis))
               `((p ,(car (assoc-ref details
                                     'synopsis))))
               '())
-         ,(if (assoc-ref details
-                         'description)
-              `((p (@(style "whitespace: break-spaces; max-width: 70ch;")) ,(car (assoc-ref details
+         ,(if (car (assoc-ref details
+                              'description))
+              `((p (@ (style ,(mk-style '((whitespace . break-spaces)
+                                          (max-width . "70ch")))))
+                   ,(car (assoc-ref details
                                     'description))))
-              '()))))
+              '())
+         (details (summary (@ (style ,(mk-style '((cursor . pointer)))))
+                           (small "more details"))
+                  (div (@ (style ,(mk-style '((padding . "1.2em")
+                                              (display . flex)
+                                              (flex-direction . column)
+                                              (gap . "1.2em")))))
+                       ,(if (car (assoc-ref details
+                                            'home-page))
+                            `((div (small "home-page: ")
+                                   (a (@ (style ,(mk-style '()))
+                                         (href ,(car (assoc-ref details
+                                                                'home-page))))
+                                      ,(car (assoc-ref details
+                                                       'home-page)))))
+                            '())
+                       ,(if (car (assoc-ref details
+                                            'build-system))
+                            `((div (small "build-system: ")
+                                   (small ,(format #f "~a"
+                                                   (car (assoc-ref details
+                                                                   'build-system))))))
+                            '()))))))
 
 (define (render-package-details xs)
   (append (map html-package-details xs)))
@@ -357,16 +393,35 @@ formatting."
                                  (read-all-sexps-from-string raw-str)))
          (package-details (filter (lambda (p)
                                     (and (not (equal? '() p))
-                                         (not (equal? #f p))))
+                                         (not (equal? #f p))
+                                         (car (assoc-ref p
+                                                         'name))))
                                   (map safe-analyze-package guile-packages)))
-         (hh `(html (body (div (h2 ,(format #f
-                                     "guile-show-hub: packages (~a items)"
-                                     (length package-details)))
-                               (div (p (small ,(format #f "taken from: ~a"
-                                                       (guile-xyz-uri))))
+         (hh `(html (body (div (h1 "guile-show-hub")
+                               (p
+                                "Showcase of all the available Guile Scheme packages in the Guix repository.")
+                               (p
+                                "Let us promote the adoption of this great and powerful language, and to make the ecosystem better.")
+                               (div (@ (style ,(mk-style '((display . flex)
+                                                           (flex-wrap . wrap)
+                                                           (gap . "1em")))))
+                                    (img (@ (src
+                                             "https://jointhefreeworld.org/ggg/dist/scheme-guile.svg")
+                                            (alt "Guile Scheme")))
+
+                                    (img (@ (src
+                                             "https://jointhefreeworld.org/ggg/dist/gnu-guix.svg")
+                                            (alt "GNU Guix"))))
+                               (div (p (small (span "data taken from: ")
+                                              (a (@ (href ,(guile-xyz-uri)))
+                                                 ,(guile-xyz-uri))))
                                     (p (small ,(format #f "last updated: ~a"
                                                        (strftime "%c"
                                                                  (localtime (current-time)))))))
+                               (hr)
+                               (h2 ,(format #f "packages (~a items)"
+                                            (length package-details)))
+
                                ,(render-package-details package-details)))))
          (page `("<!DOCTYPE html>" ,hh)))
     
