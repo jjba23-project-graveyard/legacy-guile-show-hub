@@ -372,8 +372,8 @@ formatting."
          ,(if (car (assoc-ref details
                               'synopsis))
               `((em (@ (style ,(mk-style '((font-size . medium)))))
-                    ,(car (assoc-ref details
-                                     'synopsis))))
+                    ,(latex-to-html (car (car (assoc-ref details
+                                     'synopsis))))))
               '())
          ,(if (car (assoc-ref details
                               'description))
@@ -456,11 +456,27 @@ formatting."
               (mk-style styles)
               (string-drop-right (string-drop (match:substring m) 6) 1)))))
 
+(define latex-command-pattern
+  (make-parameter "@command\\{.+\\}"))
+
+(define latex-command-replacement
+  (make-parameter "<code style=\"~a\">~a</code>"))
+
+(define latex-command-replacement-procedure
+  (lambda (styles)
+    (lambda (m)
+      (format #f
+              (latex-command-replacement)
+              (mk-style styles)
+              (string-drop-right (string-drop (match:substring m) 9) 1)))))
+
 (define* (latex-to-html str
                         #:key (code-styles '((font-family . "var(--mono-font)")
                                              (font-size . medium)))
                         (math-styles '((font-family . "var(--mono-font)")
-                                       (font-size . medium))))
+                                       (font-size . medium)))
+                        (command-styles '((font-family . "var(--mono-font)")
+                                          (font-size . medium))))
   (let* ((parse-functions (list (lambda (x)
                                   (regexp-substitute/global #f
                                                             (latex-code-pattern)
@@ -476,6 +492,14 @@ formatting."
                                                             'pre
                                                             (latex-math-replacement-procedure
                                                              math-styles)
+                                                            'post))
+                                (lambda (x)
+                                  (regexp-substitute/global #f
+                                                            (latex-command-pattern)
+                                                            x
+                                                            'pre
+                                                            (latex-command-replacement-procedure
+                                                             command-styles)
                                                             'post)))))
     (fold (lambda (fun accum)
             (apply fun
