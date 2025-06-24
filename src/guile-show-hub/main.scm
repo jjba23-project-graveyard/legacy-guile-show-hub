@@ -366,7 +366,7 @@ formatting."
                                                'name)))))
 
                    (h5 (@ (style ,(mk-style '((font-family . "var(--mono-font)")
-                                              (font-size . large)))))
+                                              (font-size . medium)))))
                        ,(assoc-ref details
                                    'version))))
          ,(if (car (assoc-ref details
@@ -381,8 +381,8 @@ formatting."
                                           (font-family . "var(--serif-font)")
                                           (white-space . break-spaces)
                                           (max-width . "70ch")))))
-                   ,(car (assoc-ref details
-                                    'description))))
+                   ,(latex-to-html (car (car (assoc-ref details
+                                                        'description))))))
               '())
          (details (summary (@ (style ,(mk-style '((cursor . pointer)))))
                            (small (@ (style ,(mk-style '((font-size . small)))))
@@ -427,6 +427,59 @@ formatting."
                         "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&family=IBM+Plex+Sans:ital,wght@0,100..700;1,100..700&family=IBM+Plex+Serif:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&display=swap"))
   `(,preconnects (link (@ (rel stylesheet)
                           (href ,stylesheet-href)))))
+
+(define latex-code-pattern
+  (make-parameter "@code\\{.+\\}"))
+
+(define latex-code-replacement
+  (make-parameter "<code style=\"~a\">~a</code>"))
+
+(define latex-code-replacement-procedure
+  (lambda (styles)
+    (lambda (m)
+      (format #f
+              (latex-code-replacement)
+              (mk-style styles)
+              (string-drop-right (string-drop (match:substring m) 6) 1)))))
+
+(define latex-math-pattern
+  (make-parameter "@math\\{.+\\}"))
+
+(define latex-math-replacement
+  (make-parameter "<code style=\"~a\">~a</code>"))
+
+(define latex-math-replacement-procedure
+  (lambda (styles)
+    (lambda (m)
+      (format #f
+              (latex-math-replacement)
+              (mk-style styles)
+              (string-drop-right (string-drop (match:substring m) 6) 1)))))
+
+(define* (latex-to-html str
+                        #:key (code-styles '((font-family . "var(--mono-font)")
+                                             (font-size . medium)))
+                        (math-styles '((font-family . "var(--mono-font)")
+                                       (font-size . medium))))
+  (let* ((parse-functions (list (lambda (x)
+                                  (regexp-substitute/global #f
+                                                            (latex-code-pattern)
+                                                            x
+                                                            'pre
+                                                            (latex-code-replacement-procedure
+                                                             code-styles)
+                                                            'post))
+                                (lambda (x)
+                                  (regexp-substitute/global #f
+                                                            (latex-math-pattern)
+                                                            x
+                                                            'pre
+                                                            (latex-math-replacement-procedure
+                                                             math-styles)
+                                                            'post)))))
+    (fold (lambda (fun accum)
+            (apply fun
+                   (list accum))) str parse-functions)))
 
 (define (main)
   (display "\nStarting Guile Show Hub")
