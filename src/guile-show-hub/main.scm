@@ -429,7 +429,8 @@ formatting."
                                          (car (assoc-ref p
                                                          'name))))
                                   (map safe-analyze-package guile-packages)))
-         (head `((meta (@ (name viewport)
+         (head `((meta (@ (charset UTF-8)))
+                 (meta (@ (name viewport)
                           (content "width=device-width")))))
          (hh `(html (@ (style ,(mk-style '((background-color . "#fff7e9")
                                            (color . "#484431")))))
