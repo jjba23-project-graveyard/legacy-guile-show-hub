@@ -1,7 +1,5 @@
 #+title: guile-show-hub
 
-🚧 Work in progress!
-
 Showcase in a pretty way all the available Guile packages in the Guix repository, to promote adoption of this great and powerful language, and to make the ecosystem better.
 
 Take periodically data from: https://codeberg.org/guix/guix/raw/branch/master/gnu/packages/guile-xyz.scm
