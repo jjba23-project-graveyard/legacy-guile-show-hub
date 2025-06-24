@@ -16,8 +16,6 @@ See the live version at: https://jointhefreeworld.org/guile-show-hub/
 
 If you like my work, please support me by [[https://bmc.link/jjbigorra][buying me a cup of coffee ☕]] so I can continue with a lot of motivation.
 
-[[https://jointhefreeworld.org/static-assets/guile-show-hub/guile-show-hub-small.png]]
-
 -------------------
 
 * Licensing
@@ -50,3 +48,4 @@ We welcome everyone to feel invited to the guile-show-hub Project, and encourage
 
 -----------
 
+[[https://jointhefreeworld.org/static-assets/guile-show-hub/guile-show-hub-small.png]]
