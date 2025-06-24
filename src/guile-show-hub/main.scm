@@ -665,16 +665,3 @@ formatting."
       (lambda ()
         (sxml->xml page)))))
 
-(regexp-substitute/global #f
-                                                            (latex-code-pattern)
-                                                            "
-The @code{(srfi-159)} module and its sub-modules implement the
-formatting combinators specified by
-@uref{https://srfi.schemers.org/srfi-159/srfi-159.html, SRFI-159}.  These are
-more expressive and flexible than the traditional @code{format} procedure.
-"
-                                                            'pre
-                                                            (latex-code-replacement-procedure
-                                                             '())
-                                                            'post)
-
