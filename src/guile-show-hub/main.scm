@@ -614,8 +614,8 @@ formatting."
                      "https://jointhefreeworld.org/static-assets/guile-show-hub/guile-show-hub-small.png")
                     (alt "Guile Show Hub Project Logo")
                     (loading lazy)))
-            (figcaption (em
-                         "guile-show-hub logo was generated with AI (DALL-E)")))))
+            (figcaption (small (em
+                                "guile-show-hub logo was generated with AI (DALL-E)"))))))
 
 (define (top-section)
   `((div (@ (style ,(mk-style '((margin . "0.8em") (display . flex)
