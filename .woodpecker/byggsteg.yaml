@@ -27,6 +27,8 @@ steps:
     when:
       - event: [ "push" ]
         branch: [ "trunk" ]
+      - event: cron
+        cron: "guile-show-hub-weekly-cron"
     settings:
       BYGGSTEG_EMAIL:
         from_secret: "BYGGSTEG_EMAIL"
