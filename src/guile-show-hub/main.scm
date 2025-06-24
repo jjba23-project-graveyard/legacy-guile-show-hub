@@ -310,6 +310,11 @@ formatting."
                                         'build-system)))
     (synopsis ,(assoc-ref p
                           'synopsis))
+    (license ,(if (assoc-ref p
+                             'license)
+                  (format #f "~a"
+                          (cond-car (assoc-ref p
+                                               'license))) #f))
     (description ,(assoc-ref p
                              'description))))
 
@@ -323,11 +328,6 @@ formatting."
                          #:is-let? #t)
         (analyze-package (caddr p)
                          #:is-let? #f))))
-
-(define (cond-rend x label)
-  (when (not (equal? #f x))
-    (display (format #f "\n~a: ~a" label
-                     (car x)))))
 
 (define (cond-car x)
   (if (not (equal? #f x))
@@ -383,6 +383,14 @@ formatting."
                                           (max-width . "70ch")))))
                    ,(latex-to-html (car (car (assoc-ref details
                                                         'description))))))
+              '())
+         ,(if (car (assoc-ref details
+                              'license))
+              `((p (@ (style ,(mk-style '((font-size . small)
+                                          (font-family . "var(--serif-font)")
+                                          (max-width . "70ch")))))
+                   ,(car (assoc-ref details
+                                    'license))))
               '())
          (details (summary (@ (style ,(mk-style '((cursor . pointer)))))
                            (small (@ (style ,(mk-style '((font-size . small)))))
@@ -585,6 +593,7 @@ formatting."
          (head `((meta (@ (charset UTF-8)))
                  (meta (@ (name viewport)
                           (content "width=device-width")))
+                 (title "Guile Show Hub")
                  ,(custom-fonts)
                  (style "
 :root {
