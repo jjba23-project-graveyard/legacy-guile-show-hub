@@ -265,7 +265,9 @@ formatting."
    "https://codeberg.org/guix/guix/raw/branch/master/gnu/packages/guile-xyz.scm"))
 
 (define (do-fetch uri)
-  (let* ((handle (curl-easy-init))
+  
+  (let* ((_ (display (format #f "\nFetching from URL: ~a" uri)))
+         (handle (curl-easy-init))
          (_ (begin
               (curl-easy-setopt handle
                                 'url uri)
@@ -338,7 +340,10 @@ formatting."
                               (cdr p))) pairs) "; "))
 
 (define* (html-package-details details)
-  `((div (@ (style ,(mk-style '((margin-top . "2.6em")))))
+  `((div (@ (style ,(mk-style '((border-radius . "1em") (padding . "1em")
+                                (margin-bottom . "1em")
+                                (background-color . "#f5e9cb")
+                                (color . "#484431")))))
          (div (@ (style ,(mk-style '((display . flex) (flex-wrap . wrap)
                                      (gap . "1em")))))
               (div (@ (style ,(mk-style '((display . flex)
@@ -348,40 +353,50 @@ formatting."
                                           (gap . "1em")))))
                    ,(if (car (assoc-ref details
                                         'home-page))
-                        `((a (@ (style ,(mk-style '((color . unset))))
+                        `((a (@ (style ,(mk-style '((color . "#484431")
+                                                    (font-size . medium))))
+                                (onMouseOver "this.style.color='#80431a'")
+                                (onMouseOut "this.style.color='#484431'")
                                 (href ,(car (assoc-ref details
                                                        'home-page))))
-                             (h3 ,(car (assoc-ref details
+                             (h3 (@ (style ,(mk-style '((font-size . larger)))))
+                                 ,(car (assoc-ref details
                                                   'name)))))
                         `((h3 ,(car (assoc-ref details
                                                'name)))))
 
                    (h5 (@ (style ,(mk-style '((font-family . monospace)
-                                              (font-size . "1.2em")))))
+                                              (font-size . large)))))
                        ,(assoc-ref details
                                    'version))))
          ,(if (car (assoc-ref details
                               'synopsis))
-              `((p ,(car (assoc-ref details
-                                    'synopsis))))
+              `((em (@ (style ,(mk-style '((font-size . medium)))))
+                    ,(car (assoc-ref details
+                                     'synopsis))))
               '())
          ,(if (car (assoc-ref details
                               'description))
-              `((p (@ (style ,(mk-style '((whitespace . break-spaces)
+              `((p (@ (style ,(mk-style '((font-size . medium)
+                                          (font-family . serif)
+                                          (white-space . break-spaces)
                                           (max-width . "70ch")))))
                    ,(car (assoc-ref details
                                     'description))))
               '())
          (details (summary (@ (style ,(mk-style '((cursor . pointer)))))
-                           (small "more details"))
+                           (small (@ (style ,(mk-style '((font-size . small)))))
+                                  "more details"))
                   (div (@ (style ,(mk-style '((padding . "1.2em")
                                               (display . flex)
                                               (flex-direction . column)
                                               (gap . "1.2em")))))
                        ,(if (car (assoc-ref details
                                             'home-page))
-                            `((div (small "home-page: ")
-                                   (a (@ (style ,(mk-style '()))
+                            `((div (span (@ (style ,(mk-style '((font-size . small)))))
+                                         "home-page: ")
+                                   (a (@ (style ,(mk-style '((font-size . small)
+                                                             (color . "#80431a"))))
                                          (href ,(car (assoc-ref details
                                                                 'home-page))))
                                       ,(car (assoc-ref details
@@ -389,10 +404,13 @@ formatting."
                             '())
                        ,(if (car (assoc-ref details
                                             'build-system))
-                            `((div (small "build-system: ")
-                                   (small ,(format #f "~a"
-                                                   (car (assoc-ref details
-                                                                   'build-system))))))
+                            `((div (span (@ (style ,(mk-style '((font-size . small)))))
+                                         "build-system: ")
+                                   (span (@ (style ,(mk-style '((font-size . medium)
+                                                                (font-family . monospace)))))
+                                         ,(format #f "~a"
+                                                  (car (assoc-ref details
+                                                                  'build-system))))))
                             '()))))))
 
 (define (render-package-details xs)
@@ -400,8 +418,6 @@ formatting."
 
 (define (main)
   (display "\nStarting Guile Show Hub")
-  (display (format #f "\nFetching from URL: ~a"
-                   (guile-xyz-uri)))
   (let* ((raw-str (do-fetch (guile-xyz-uri)))
          (guile-packages (filter (lambda (s)
                                    (equal? 'define-public
@@ -413,32 +429,67 @@ formatting."
                                          (car (assoc-ref p
                                                          'name))))
                                   (map safe-analyze-package guile-packages)))
-         (hh `(html (body (div (h1 "guile-show-hub")
-                               (p
-                                "Showcase of all the available Guile Scheme packages in the Guix repository.")
-                               (p
-                                "Let us promote the adoption of this great and powerful language, and to make the ecosystem better.")
-                               (div (@ (style ,(mk-style '((display . flex)
-                                                           (flex-wrap . wrap)
-                                                           (gap . "1em")))))
-                                    (img (@ (src
-                                             "https://jointhefreeworld.org/ggg/dist/scheme-guile.svg")
-                                            (alt "Guile Scheme")))
+         (head `((meta (@ (name viewport)
+                          (content "width=device-width")))))
+         (hh `(html (@ (style ,(mk-style '((background-color . "#fff7e9")
+                                           (color . "#484431")))))
+                    ,head
+                    (body (div (div (@ (style ,(mk-style '((margin . "0.8em")
+                                                           (display . flex)
+                                                           (flex-direction . column)
+                                                           (gap . "1em")
+                                                           (max-width . "70ch")))))
+                                    (h1 (@ (style ,(mk-style '((style . italic)))))
+                                        "λ guile-show-hub")
+                                    (small
+                                     "Showcase of all the available Guile Scheme packages in the Guix repository.")
+                                    (small (@ (style ,(mk-style '((font-size . small)))))
+                                     "Let us promote the adoption of this great and powerful language, and to make the ecosystem better.")
+                                    (div (@ (style ,(mk-style '((display . flex)
+                                                                (flex-wrap . wrap)
+                                                                (margin . "0.8em")
+                                                                (justify-content . center)
+                                                                (gap . "0.6em")))))
+                                         (img (@ (src
+                                                  "https://jointhefreeworld.org/ggg/dist/scheme-guile.svg")
+                                                 (alt "Guile Scheme")))
 
-                                    (img (@ (src
-                                             "https://jointhefreeworld.org/ggg/dist/gnu-guix.svg")
-                                            (alt "GNU Guix"))))
-                               (div (p (small (span "data taken from: ")
-                                              (a (@ (href ,(guile-xyz-uri)))
-                                                 ,(guile-xyz-uri))))
-                                    (p (small ,(format #f "last updated: ~a"
-                                                       (strftime "%c"
-                                                                 (localtime (current-time)))))))
+                                         (img (@ (src
+                                                  "https://jointhefreeworld.org/ggg/dist/gnu-guix.svg")
+                                                 (alt "GNU Guix")))
+                                         (img (@ (src
+                                                  "https://jointhefreeworld.org/ggg/dist/license-agpl3+.svg")
+                                                 (alt "GNU AGPL v3+")))))
+
+                               (div (@ (style ,(mk-style '((display . flex)
+                                                           (margin . "0.8em")
+                                                           (flex-direction . column)
+                                                           (gap . "1em")))))
+                                    (em (small ,(format #f "last updated: ~a"
+                                                        (strftime "%c"
+                                                                  (localtime (current-time))))))
+                                    (em (@ (style ,(mk-style '((font-size . medium)))))
+                                     "Copyright © Josep Bigorra &lt;jjbigorra@gmail.com&gt;")
+                                    (div (@ (style ,(mk-style '((max-width . "70ch")))))
+                                         (em (@ (style ,(mk-style '((font-size . small)))))
+                                          "guile-show-hub is free software licensed under the Affero GNU General Public License v3 or newer"))
+                                    (small (div (em "data taken from: ")
+                                                (a (@ (href ,(guile-xyz-uri)))
+                                                   ,(guile-xyz-uri))))
+
+                                    (div (em (@ (style ,(mk-style '((font-size . small)))))
+                                             "find the source code here: ")
+                                         (a (@ (style ,(mk-style '((font-size . small))))
+                                               (href
+                                                "https://codeberg.org/jjba23/guile-show-hub"))
+                                          "https://codeberg.org/jjba23/guile-show-hub")))
+
                                (hr)
                                (h2 ,(format #f "packages (~a items)"
                                             (length package-details)))
 
-                               ,(render-package-details package-details)))))
+                               (div (@ (style ,(mk-style '((margin . "0.8em")))))
+                                    ,(render-package-details package-details))))))
          (page `("<!DOCTYPE html>" ,hh)))
     
     (with-output-to-file "index.html"
