@@ -429,7 +429,7 @@ formatting."
                           (href ,stylesheet-href)))))
 
 (define latex-code-pattern
-  (make-parameter "@code\\{(.|\\r|\\n)+\\}"))
+  (make-parameter "@code\\{[^}]+\\}{1}"))
 
 (define latex-code-replacement
   (make-parameter "<code style=\"~a\">~a</code>"))
@@ -443,7 +443,7 @@ formatting."
               (string-drop-right (string-drop (match:substring m) 6) 1)))))
 
 (define latex-math-pattern
-  (make-parameter "@math\\{(.|\\r|\\n)+\\}"))
+  (make-parameter "@math\\{[^}]+\\}{1}"))
 
 (define latex-math-replacement
   (make-parameter "<code style=\"~a\">~a</code>"))
@@ -457,7 +457,7 @@ formatting."
               (string-drop-right (string-drop (match:substring m) 6) 1)))))
 
 (define latex-command-pattern
-  (make-parameter "@command\\{(.|\\r|\\n)+\\}"))
+  (make-parameter "@command\\{[^}]+\\}{1}"))
 
 (define latex-command-replacement
   (make-parameter "<code style=\"~a\">~a</code>"))
@@ -492,6 +492,20 @@ formatting."
                                                                          12)
                                                "@item " "") #\;)))))))
 
+(define latex-example-pattern
+  (make-parameter "@example(.|\\r|\\n)*?@end\\sexample"))
+
+(define latex-example-replacement
+  (make-parameter "<pre style=\"~a\">~a</pre>"))
+
+(define latex-example-replacement-procedure
+  (lambda (styles)
+    (lambda (m)
+      (format #f
+              (latex-example-replacement)
+              (mk-style styles)
+              (string-drop-right (string-drop (match:substring m) 8) 12)))))
+
 ;; 
 
 (define* (latex-to-html str
@@ -500,6 +514,15 @@ formatting."
                         (math-styles '((font-family . "var(--mono-font)")
                                        (font-size . medium)))
                         (command-styles '((font-family . "var(--mono-font)")
+                                          (font-size . medium)))
+                        (example-styles '((font-family . "var(--mono-font)")
+                                          (border-radius . "1em")
+                                          (background-color . "var(--bg-color)")
+                                          (white-space . pre-wrap)
+                                          (padding-top . "0.9em")
+                                          (padding-bottom . "0.9em")
+                                          (padding-right . "0.5em")
+                                          (padding-left . "0.5em")
                                           (font-size . medium)))
                         (itemize-styles '()))
   (let* ((parse-functions (list (lambda (x)
@@ -525,6 +548,14 @@ formatting."
                                                             'pre
                                                             (latex-command-replacement-procedure
                                                              command-styles)
+                                                            'post))
+                                (lambda (x)
+                                  (regexp-substitute/global #f
+                                                            (latex-example-pattern)
+                                                            x
+                                                            'pre
+                                                            (latex-example-replacement-procedure
+                                                             example-styles)
                                                             'post))
                                 (lambda (x)
                                   (regexp-substitute/global #f
@@ -633,4 +664,17 @@ formatting."
     (with-output-to-file "index.html"
       (lambda ()
         (sxml->xml page)))))
+
+(regexp-substitute/global #f
+                                                            (latex-code-pattern)
+                                                            "
+The @code{(srfi-159)} module and its sub-modules implement the
+formatting combinators specified by
+@uref{https://srfi.schemers.org/srfi-159/srfi-159.html, SRFI-159}.  These are
+more expressive and flexible than the traditional @code{format} procedure.
+"
+                                                            'pre
+                                                            (latex-code-replacement-procedure
+                                                             '())
+                                                            'post)
 
