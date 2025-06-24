@@ -656,7 +656,7 @@ formatting."
             "Copyright © Josep Bigorra &lt;jjbigorra@gmail.com&gt;")
          (div (@ (style ,(mk-style '((max-width . "70ch")))))
               (em (@ (style ,(mk-style '((font-size . small)))))
-               "guile-show-hub is free software licensed under the Affero GNU General Public License v3 or newer"))
+               "guile-show-hub is free software licensed under the GNU Affero General Public License v3 or newer"))
          (em (small ,(format #f "last updated: ~a"
                              (strftime "%c"
                                        (localtime (current-time))))))
