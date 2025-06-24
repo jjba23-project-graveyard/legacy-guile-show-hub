@@ -373,7 +373,7 @@ formatting."
                               'synopsis))
               `((em (@ (style ,(mk-style '((font-size . medium)))))
                     ,(latex-to-html (car (car (assoc-ref details
-                                     'synopsis))))))
+                                                         'synopsis))))))
               '())
          ,(if (car (assoc-ref details
                               'description))
@@ -429,7 +429,7 @@ formatting."
                           (href ,stylesheet-href)))))
 
 (define latex-code-pattern
-  (make-parameter "@code\\{.+\\}"))
+  (make-parameter "@code\\{(.|\\r|\\n)+\\}"))
 
 (define latex-code-replacement
   (make-parameter "<code style=\"~a\">~a</code>"))
@@ -443,7 +443,7 @@ formatting."
               (string-drop-right (string-drop (match:substring m) 6) 1)))))
 
 (define latex-math-pattern
-  (make-parameter "@math\\{.+\\}"))
+  (make-parameter "@math\\{(.|\\r|\\n)+\\}"))
 
 (define latex-math-replacement
   (make-parameter "<code style=\"~a\">~a</code>"))
@@ -457,7 +457,7 @@ formatting."
               (string-drop-right (string-drop (match:substring m) 6) 1)))))
 
 (define latex-command-pattern
-  (make-parameter "@command\\{.+\\}"))
+  (make-parameter "@command\\{(.|\\r|\\n)+\\}"))
 
 (define latex-command-replacement
   (make-parameter "<code style=\"~a\">~a</code>"))
@@ -470,13 +470,38 @@ formatting."
               (mk-style styles)
               (string-drop-right (string-drop (match:substring m) 9) 1)))))
 
+(define latex-itemize-pattern
+  (make-parameter "@itemize(.|\\r|\\n)*?@end\\sitemize"))
+
+(define latex-itemize-replacement
+  (make-parameter "<ul style=\"~a\">~a</ul>"))
+
+(define latex-itemize-replacement-procedure
+  (lambda (styles)
+    (lambda (m)
+      (format #f
+              (latex-itemize-replacement)
+              (mk-style styles)
+              (string-join (map (lambda (l)
+                                  (format #f "<li>~a</li>" l))
+                                (string-split (string-replace-substring (string-drop-right
+                                                                         (string-drop
+                                                                          (match:substring
+                                                                           m)
+                                                                          8)
+                                                                         12)
+                                               "@item " "") #\;)))))))
+
+;; 
+
 (define* (latex-to-html str
                         #:key (code-styles '((font-family . "var(--mono-font)")
                                              (font-size . medium)))
                         (math-styles '((font-family . "var(--mono-font)")
                                        (font-size . medium)))
                         (command-styles '((font-family . "var(--mono-font)")
-                                          (font-size . medium))))
+                                          (font-size . medium)))
+                        (itemize-styles '()))
   (let* ((parse-functions (list (lambda (x)
                                   (regexp-substitute/global #f
                                                             (latex-code-pattern)
@@ -500,6 +525,14 @@ formatting."
                                                             'pre
                                                             (latex-command-replacement-procedure
                                                              command-styles)
+                                                            'post))
+                                (lambda (x)
+                                  (regexp-substitute/global #f
+                                                            (latex-itemize-pattern)
+                                                            x
+                                                            'pre
+                                                            (latex-itemize-replacement-procedure
+                                                             itemize-styles)
                                                             'post)))))
     (fold (lambda (fun accum)
             (apply fun
