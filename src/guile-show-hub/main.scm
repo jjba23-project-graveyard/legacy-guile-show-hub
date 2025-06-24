@@ -353,7 +353,7 @@ formatting."
                                           (gap . "1em")))))
                    ,(if (car (assoc-ref details
                                         'home-page))
-                        `((a (@ (style ,(mk-style '((color . "#484431")
+                        `((a (@ (style ,(mk-style '((color . "var(--fg-color)")
                                                     (font-size . medium))))
                                 (onMouseOver "this.style.color='#80431a'")
                                 (onMouseOut "this.style.color='#484431'")
@@ -365,7 +365,7 @@ formatting."
                         `((h3 ,(car (assoc-ref details
                                                'name)))))
 
-                   (h5 (@ (style ,(mk-style '((font-family . monospace)
+                   (h5 (@ (style ,(mk-style '((font-family . "var(--mono-font)")
                                               (font-size . large)))))
                        ,(assoc-ref details
                                    'version))))
@@ -378,7 +378,7 @@ formatting."
          ,(if (car (assoc-ref details
                               'description))
               `((p (@ (style ,(mk-style '((font-size . medium)
-                                          (font-family . serif)
+                                          (font-family . "var(--serif-font)")
                                           (white-space . break-spaces)
                                           (max-width . "70ch")))))
                    ,(car (assoc-ref details
@@ -396,7 +396,7 @@ formatting."
                             `((div (span (@ (style ,(mk-style '((font-size . small)))))
                                          "home-page: ")
                                    (a (@ (style ,(mk-style '((font-size . small)
-                                                             (color . "#80431a"))))
+                                                             (color . "var(--fg-alt-color)"))))
                                          (href ,(car (assoc-ref details
                                                                 'home-page))))
                                       ,(car (assoc-ref details
@@ -407,7 +407,7 @@ formatting."
                             `((div (span (@ (style ,(mk-style '((font-size . small)))))
                                          "build-system: ")
                                    (span (@ (style ,(mk-style '((font-size . medium)
-                                                                (font-family . monospace)))))
+                                                                (font-family . "var(--mono-font)")))))
                                          ,(format #f "~a"
                                                   (car (assoc-ref details
                                                                   'build-system))))))
@@ -415,6 +415,18 @@ formatting."
 
 (define (render-package-details xs)
   (append (map html-package-details xs)))
+
+(define* (custom-fonts #:key (preconnects `((link (@ (rel preconnect)
+                                                     (href
+                                                      "https://fonts.googleapis.com")))
+                                            (link (@ (rel preconnect)
+                                                     (href
+                                                      "https://fonts.gstatic.com")
+                                                     (crossorigin "")))))
+                       (stylesheet-href
+                        "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&family=IBM+Plex+Sans:ital,wght@0,100..700;1,100..700&family=IBM+Plex+Serif:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&display=swap"))
+  `(,preconnects (link (@ (rel stylesheet)
+                          (href ,stylesheet-href)))))
 
 (define (main)
   (display "\nStarting Guile Show Hub")
@@ -431,20 +443,34 @@ formatting."
                                   (map safe-analyze-package guile-packages)))
          (head `((meta (@ (charset UTF-8)))
                  (meta (@ (name viewport)
-                          (content "width=device-width")))))
-         (hh `(html (@ (style ,(mk-style '((background-color . "#fff7e9")
-                                           (color . "#484431")))))
+                          (content "width=device-width")))
+                 ,(custom-fonts)
+                 (style "
+:root {
+  --sans-font: \"IBM Plex Sans\", sans-serif;
+  --serif-font: \"IBM Plex Serif\", serif;
+  --mono-font: \"IBM Plex Mono\", monospace;
+
+  --fg-color: #484431;
+  --fg-alt-color: #80431a;
+  --bg-color: #fff7e9;
+  --bg-alt-color: #f5e9cb;
+}
+")))
+         (hh `(html (@ (style ,(mk-style '((background-color . "var(--bg-color)")
+                                           (color . "var(--fg-color)")
+                                           (font-family . "var(--serif-font)")))))
                     ,head
                     (body (div (div (@ (style ,(mk-style '((margin . "0.8em")
                                                            (display . flex)
                                                            (flex-direction . column)
                                                            (gap . "1em")
                                                            (max-width . "70ch")))))
-                                    (h1 (@ (style ,(mk-style '((style . italic)))))
+                                    (h1 (@ (style ,(mk-style '((font-family . "var(--serif-font)")))))
                                         "λ guile-show-hub")
-                                    (small
+                                    (p (@ (style ,(mk-style '((font-size . medium)))))
                                      "Showcase of all the available Guile Scheme packages in the Guix repository.")
-                                    (small (@ (style ,(mk-style '((font-size . small)))))
+                                    (p (@ (style ,(mk-style '((font-size . medium)))))
                                      "Let us promote the adoption of this great and powerful language, and to make the ecosystem better.")
                                     (div (@ (style ,(mk-style '((display . flex)
                                                                 (flex-wrap . wrap)
@@ -466,14 +492,14 @@ formatting."
                                                            (margin . "0.8em")
                                                            (flex-direction . column)
                                                            (gap . "1em")))))
-                                    (em (small ,(format #f "last updated: ~a"
-                                                        (strftime "%c"
-                                                                  (localtime (current-time))))))
-                                    (em (@ (style ,(mk-style '((font-size . medium)))))
+                                    (p (@ (style ,(mk-style '((font-size . medium)))))
                                      "Copyright © Josep Bigorra &lt;jjbigorra@gmail.com&gt;")
                                     (div (@ (style ,(mk-style '((max-width . "70ch")))))
                                          (em (@ (style ,(mk-style '((font-size . small)))))
                                           "guile-show-hub is free software licensed under the Affero GNU General Public License v3 or newer"))
+                                    (em (small ,(format #f "last updated: ~a"
+                                                        (strftime "%c"
+                                                                  (localtime (current-time))))))
                                     (small (div (em "data taken from: ")
                                                 (a (@ (href ,(guile-xyz-uri)))
                                                    ,(guile-xyz-uri))))
@@ -486,7 +512,8 @@ formatting."
                                           "https://codeberg.org/jjba23/guile-show-hub")))
 
                                (hr)
-                               (h2 ,(format #f "packages (~a items)"
+                               (h2 (@ (style ,(mk-style '((font-family . "var(--sans-font)")))))
+                                   ,(format #f "packages (~a items)"
                                             (length package-details)))
 
                                (div (@ (style ,(mk-style '((margin . "0.8em")))))
