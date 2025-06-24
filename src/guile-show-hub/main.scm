@@ -608,11 +608,14 @@ formatting."
                    (list accum))) str parse-functions)))
 
 (define (project-logo)
-  `((img (@ (style ,(mk-style '((border-radius . "1em") (max-width . "40ch"))))
-            (src
-             "https://jointhefreeworld.org/static-assets/guile-show-hub/guile-show-hub-small.png")
-            (alt "Guile Show Hub Project Logo")
-            (loading lazy)))))
+  `((figure (img (@ (style ,(mk-style '((border-radius . "1em")
+                                        (max-width . "40ch"))))
+                    (src
+                     "https://jointhefreeworld.org/static-assets/guile-show-hub/guile-show-hub-small.png")
+                    (alt "Guile Show Hub Project Logo")
+                    (loading lazy)))
+            (figcaption (em
+                         "guile-show-hub logo was generated with AI (DALL-E)")))))
 
 (define (top-section)
   `((div (@ (style ,(mk-style '((margin . "0.8em") (display . flex)
@@ -716,7 +719,7 @@ formatting."
                                     (div ,(top-section)
                                          ,(top-section2))
                                     ,(project-logo))
-                               (hr (@(style ,(mk-style '((color . "var(--fg-faint-color)"))))))
+                               (hr (@ (style ,(mk-style '((color . "var(--fg-faint-color)"))))))
                                (h2 (@ (style ,(mk-style '((font-family . "var(--sans-font)")))))
                                    ,(format #f "packages (~a items)"
                                             (length package-details)))
