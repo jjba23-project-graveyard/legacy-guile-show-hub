@@ -343,6 +343,7 @@ formatting."
   `((div (@ (style ,(mk-style '((border-radius . "1em") (padding . "1em")
                                 (margin-bottom . "1em")
                                 (background-color . "#f5e9cb")
+                                (max-width . "86ch")
                                 (color . "#484431")))))
          (div (@ (style ,(mk-style '((display . flex) (flex-wrap . wrap)
                                      (gap . "1em")))))
@@ -514,7 +515,25 @@ formatting."
               (mk-style styles)
               (string-drop-right (string-drop (match:substring m) 8) 12)))))
 
-;; 
+(define latex-url-pattern
+  (make-parameter "@url\\{[^}]+\\}{1}"))
+
+(define latex-url-replacement
+  (make-parameter "<a style=\"~a\" href=\"~a\">~a</a>"))
+
+(define latex-url-replacement-procedure
+  (lambda (styles)
+    (lambda (m)
+      (let* ((uri-and-title (string-drop-right (string-drop (match:substring m)
+                                                            5) 1))
+             (frags (string-split uri-and-title #\,))
+             (the-url (if (> (length frags) 0)
+                          (car frags) uri-and-title))
+             (the-title (if (> (length frags) 1)
+                            (cadr frags) uri-and-title)))
+        (format #f
+                (latex-url-replacement)
+                (mk-style styles) the-url the-title)))))
 
 (define* (latex-to-html str
                         #:key (code-styles '((font-family . "var(--mono-font)")
@@ -532,6 +551,8 @@ formatting."
                                           (padding-right . "0.5em")
                                           (padding-left . "0.5em")
                                           (font-size . medium)))
+                        (url-styles '((color . "var(--fg-alt-color)")
+                                      (font-family . "var(--sans-font)")))
                         (itemize-styles '()))
   (let* ((parse-functions (list (lambda (x)
                                   (regexp-substitute/global #f
@@ -564,6 +585,14 @@ formatting."
                                                             'pre
                                                             (latex-example-replacement-procedure
                                                              example-styles)
+                                                            'post))
+                                (lambda (x)
+                                  (regexp-substitute/global #f
+                                                            (latex-url-pattern)
+                                                            x
+                                                            'pre
+                                                            (latex-url-replacement-procedure
+                                                             url-styles)
                                                             'post))
                                 (lambda (x)
                                   (regexp-substitute/global #f
@@ -651,12 +680,16 @@ formatting."
                                                         (strftime "%c"
                                                                   (localtime (current-time))))))
                                     (small (div (em "data taken from: ")
-                                                (a (@ (href ,(guile-xyz-uri)))
+                                                (a (@ (href ,(guile-xyz-uri))
+                                                      (style ,(mk-style '((font-family . "var(--sans-font)")
+                                                                          (color . "var(--fg-alt-color)")))))
                                                    ,(guile-xyz-uri))))
 
                                     (div (em (@ (style ,(mk-style '((font-size . small)))))
                                              "find the source code here: ")
-                                         (a (@ (style ,(mk-style '((font-size . small))))
+                                         (a (@ (style ,(mk-style '((font-size . small)
+                                                                   (font-family . "var(--sans-font)")
+                                                                   (color . "var(--fg-alt-color)"))))
                                                (href
                                                 "https://codeberg.org/jjba23/guile-show-hub"))
                                           "https://codeberg.org/jjba23/guile-show-hub")))
