@@ -27,6 +27,8 @@ steps:
     when:
       - event: [ "push" ]
         branch: [ "trunk" ]
+      - event: cron
+        cron: "guile-show-hub-weekly-cron"
     settings:
       BYGGSTEG_EMAIL:
         from_secret: "BYGGSTEG_EMAIL"
@@ -39,6 +41,8 @@ steps:
     when:
       - event: [ "push" ]
         branch: [ "trunk" ]
+      - event: cron
+        cron: "guile-show-hub-weekly-cron"        
     settings:
       BYGGSTEG_URL: *byggsteg_url
       BYGGSTEG_JOB_CODE: |
@@ -53,5 +57,7 @@ steps:
     when:
       - event: [ "push" ]
         branch: [ "trunk" ]
+      - event: cron
+        cron: "guile-show-hub-weekly-cron"        
     settings:
       BYGGSTEG_URL: *byggsteg_url
