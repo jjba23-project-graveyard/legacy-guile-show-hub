@@ -36,10 +36,6 @@
              ((guix licenses)
               #:prefix license:))
 
-(packages->manifest (list (specification->package "make")
-                          guix
-                          guile-next
-                          guile-curl
-                          guile-ares-rs))
-
+(packages->manifest (list (specification->package "make") guix guile-next
+                          guile-curl guile-ares-rs))
 

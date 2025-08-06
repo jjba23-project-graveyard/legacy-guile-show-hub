@@ -506,6 +506,9 @@
                     (href "https://codeberg.org/jjba23/guile-show-hub"))
                  "https://codeberg.org/jjba23/guile-show-hub")))))
 
+(define destination-dir
+  (make-parameter "./dist"))
+
 (define (main)
   (display "\nStarting Guile Show Hub")
   (let* ((raw-str (do-fetch (guile-xyz-uri)))
@@ -559,7 +562,13 @@
                                     ,(render-package-details package-details))))))
          (page `("<!DOCTYPE html>" ,hh)))
     
-    (with-output-to-file "index.html"
+    (catch #t
+           (lambda ()
+             (mkdir (destination-dir)))
+           (lambda (key . args)
+             #t))
+    (with-output-to-file (format #f "~a/index.html"
+                                 (destination-dir))
       (lambda ()
         (sxml->xml page)))))
 
