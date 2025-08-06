@@ -137,7 +137,7 @@
                                 (onMouseOut "this.style.color='#484431'")
                                 (href ,(car (assoc-ref details
                                                        'home-page))))
-                             (h3 (@ (style ,(mk-style '((font-size . larger)))))
+                             (h3 (@ (style ,(mk-style '((font-size . x-large)))))
                                  ,(car (assoc-ref details
                                                   'name)))))
                         `((h3 ,(car (assoc-ref details
@@ -149,15 +149,16 @@
                                    'version))))
          ,(if (car (assoc-ref details
                               'synopsis))
-              `((em (@ (style ,(mk-style '((font-size . medium)))))
+              `((em (@ (style ,(mk-style '((font-size . large)))))
                     ,(latex-to-html (car (car (assoc-ref details
                                                          'synopsis))))))
               '())
          ,(if (car (assoc-ref details
                               'description))
-              `((p (@ (style ,(mk-style '((font-size . medium)
+              `((p (@ (style ,(mk-style '((font-size . large)
                                           (font-family . "var(--serif-font)")
-                                          (white-space . break-spaces)
+                                          (white-space . wrap)
+                                          (text-align . justify)
                                           (max-width . "70ch")))))
                    ,(latex-to-html (car (car (assoc-ref details
                                                         'description))))))
