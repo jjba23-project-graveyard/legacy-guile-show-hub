@@ -118,6 +118,7 @@
 (define* (html-package-details details)
   `((div (@ (style ,(mk-style '((border-radius . "1em") (padding . "1em")
                                 (margin-bottom . "1em")
+                                (box-shadow . "var(--simple-shadow)")
                                 (background-color . "#f5e9cb")
                                 (border . "1px solid var(--fg-faint-color)")
                                 (max-width . "86ch")
@@ -165,14 +166,14 @@
               '())
          ,(if (car (assoc-ref details
                               'license))
-              `((p (@ (style ,(mk-style '((font-size . small)
+              `((p (@ (style ,(mk-style '((font-size . medium)
                                           (font-family . "var(--serif-font)")
                                           (max-width . "70ch")))))
                    ,(car (assoc-ref details
                                     'license))))
               '())
          (details (summary (@ (style ,(mk-style '((cursor . pointer)))))
-                           (small (@ (style ,(mk-style '((font-size . small)))))
+                           (small (@ (style ,(mk-style '((font-size . medium)))))
                                   "more details"))
                   (div (@ (style ,(mk-style '((padding . "1.2em")
                                               (display . flex)
@@ -180,9 +181,9 @@
                                               (gap . "1.2em")))))
                        ,(if (car (assoc-ref details
                                             'home-page))
-                            `((div (span (@ (style ,(mk-style '((font-size . small)))))
+                            `((div (span (@ (style ,(mk-style '((font-size . medium)))))
                                          "home-page: ")
-                                   (a (@ (style ,(mk-style '((font-size . small)
+                                   (a (@ (style ,(mk-style '((font-size . medium)
                                                              (color . "var(--fg-alt-color)"))))
                                          (href ,(car (assoc-ref details
                                                                 'home-page))))
@@ -191,7 +192,7 @@
                             '())
                        ,(if (car (assoc-ref details
                                             'build-system))
-                            `((div (span (@ (style ,(mk-style '((font-size . small)))))
+                            `((div (span (@ (style ,(mk-style '((font-size . medium)))))
                                          "build-system: ")
                                    (span (@ (style ,(mk-style '((font-size . medium)
                                                                 (font-family . "var(--mono-font)")))))
@@ -481,14 +482,14 @@
                        "https://jointhefreeworld.org/ggg/dist/license-agpl3+.svg")
                       (alt "GNU AGPL v3+")))))))
 
-(define (top-section2)
+(define (footer-section)
   `((div (@ (style ,(mk-style '((display . flex) (margin . "0.8em")
                                 (flex-direction . column)
                                 (gap . "1em")))))
          (p (@ (style ,(mk-style '((font-size . medium)))))
             "Copyright © Josep Bigorra &lt;jjbigorra@gmail.com&gt;")
          (div (@ (style ,(mk-style '((max-width . "70ch")))))
-              (em (@ (style ,(mk-style '((font-size . small)))))
+              (em (@ (style ,(mk-style '((font-size . medium)))))
                "guile-show-hub is free software licensed under the GNU Affero General Public License v3 or newer"))
          (em (small ,(format #f "last updated: ~a"
                              (strftime "%c"
@@ -499,9 +500,9 @@
                                                (color . "var(--fg-alt-color)")))))
                         ,(guile-xyz-uri))))
 
-         (div (em (@ (style ,(mk-style '((font-size . small)))))
+         (div (em (@ (style ,(mk-style '((font-size . medium)))))
                   "find the source code here: ")
-              (a (@ (style ,(mk-style '((font-size . small)
+              (a (@ (style ,(mk-style '((font-size . medium)
                                         (font-family . "var(--sans-font)")
                                         (color . "var(--fg-alt-color)"))))
                     (href "https://codeberg.org/jjba23/guile-show-hub"))
@@ -534,11 +535,13 @@
   --serif-font: \"IBM Plex Serif\", serif;
   --mono-font: \"IBM Plex Mono\", monospace;
 
-  --fg-color: #484431;
-  --fg-alt-color: #80431a;
-  --fg-faint-color: #dcdcdc;
-  --bg-color: #fff7e9;
-  --bg-alt-color: #f5e9cb;
+  --bg-color: #fbf1c7;
+  --bg-alt-color: #ebdbb2;
+  --bg-faint-color: #dbd1c7;
+  --fg-color: #3c3836;
+  --fg-alt-color: #282828;
+  --fg-faint-color: rgba(40,40,40,0.6);
+  --simple-shadow: 5px 5px 3px rgba(40,40,40,0.3);
 }
 ")))
          (hh `(html (@ (style ,(mk-style '((background-color . "var(--bg-color)")
@@ -552,15 +555,16 @@
                                                            (gap . "1em")
                                                            (padding . "1em")
                                                            (justify-content . space-between)))))
-                                    (div ,(top-section)
-                                         ,(top-section2))
+                                    (div ,(top-section))
                                     ,(project-logo))
                                (hr (@ (style ,(mk-style '((color . "var(--fg-faint-color)"))))))
                                (h2 (@ (style ,(mk-style '((font-family . "var(--sans-font)")))))
                                    ,(format #f "packages (~a items)"
                                             (length package-details)))
                                (div (@ (style ,(mk-style '((margin . "0.8em")))))
-                                    ,(render-package-details package-details))))))
+                                    ,(render-package-details package-details))
+                               (hr (@ (style ,(mk-style '((color . "var(--fg-faint-color)"))))))
+                               ,(footer-section)))))
          (page `("<!DOCTYPE html>" ,hh)))
     
     (catch #t
