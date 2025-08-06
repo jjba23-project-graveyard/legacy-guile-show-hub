@@ -35,7 +35,7 @@ deploy:
 	CI=true make run
 	rm -rfv /srv/http/jointhefreeworld.org/guile-show-hub
 	mkdir -p /srv/http/jointhefreeworld.org/guile-show-hub
-	mv -v index.html /srv/http/jointhefreeworld.org/guile-show-hub/
+	mv -v ./dist/index.html /srv/http/jointhefreeworld.org/guile-show-hub/
 
 serve:
 	darkhttpd ./dist --port 50074
