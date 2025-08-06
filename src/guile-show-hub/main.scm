@@ -256,6 +256,23 @@
               (mk-style styles)
               (string-drop-right (string-drop (match:substring m) 9) 1)))))
 
+(define latex-acronym-pattern
+  (make-parameter "@acronym\\{[^}]+\\}{1}"))
+
+(define latex-acronym-replacement
+  (make-parameter "~a (~a)"))
+
+(define latex-acronym-replacement-procedure
+  (lambda ()
+    (lambda (m)
+      (let* ((match-acronym (string-drop-right (string-drop (match:substring m)
+                                                            9) 1))
+             (acronym-parts (string-split match-acronym #\,)))
+        (format #f
+                (latex-acronym-replacement)
+                (car acronym-parts)
+                (string-trim-both (cadr acronym-parts)))))))
+
 (define latex-itemize-pattern
   (make-parameter "@itemize(.|\\r|\\n)*?@end\\sitemize"))
 
@@ -312,7 +329,27 @@
                 (latex-url-replacement)
                 (mk-style styles) the-url the-title)))))
 
-(define* (latex-to-html str
+(define latex-uref-pattern
+  (make-parameter "@uref\\{[^}]+\\}{1}"))
+
+(define latex-uref-replacement
+  (make-parameter "<a style=\"~a\" href=\"~a\">~a</a>"))
+
+(define latex-uref-replacement-procedure
+  (lambda (styles)
+    (lambda (m)
+      (let* ((uri-and-title (string-drop-right (string-drop (match:substring m)
+                                                            6) 1))
+             (frags (string-split uri-and-title #\,))
+             (the-url (if (> (length frags) 0)
+                          (car frags) uri-and-title))
+             (the-title (if (> (length frags) 1)
+                            (string-trim-both (cadr frags)) uri-and-title)))
+        (format #f
+                (latex-uref-replacement)
+                (mk-style styles) the-url the-title)))))
+
+(define* (latex-to-html raw-str
                         #:key (code-styles '((font-family . "var(--mono-font)")
                                              (font-size . medium)))
                         (math-styles '((font-family . "var(--mono-font)")
@@ -331,7 +368,9 @@
                         (url-styles '((color . "var(--fg-alt-color)")
                                       (font-family . "var(--sans-font)")))
                         (itemize-styles '()))
-  (let* ((parse-functions (list (lambda (x)
+  (let* ((str (if (string? raw-str) raw-str
+                  (format #f "~a" raw-str)))
+         (parse-functions (list (lambda (x)
                                   (regexp-substitute/global #f
                                                             (latex-code-pattern)
                                                             x
@@ -371,6 +410,16 @@
                                                             (latex-url-replacement-procedure
                                                              url-styles)
                                                             'post))
+
+                                (lambda (x)
+                                  (regexp-substitute/global #f
+                                                            (latex-uref-pattern)
+                                                            x
+                                                            'pre
+                                                            (latex-uref-replacement-procedure
+                                                             url-styles)
+                                                            'post))
+
                                 (lambda (x)
                                   (regexp-substitute/global #f
                                                             (latex-itemize-pattern)
@@ -378,6 +427,13 @@
                                                             'pre
                                                             (latex-itemize-replacement-procedure
                                                              itemize-styles)
+                                                            'post))
+                                (lambda (x)
+                                  (regexp-substitute/global #f
+                                                            (latex-acronym-pattern)
+                                                            x
+                                                            'pre
+                                                            (latex-acronym-replacement-procedure)
                                                             'post)))))
     (fold (lambda (fun accum)
             (apply fun
