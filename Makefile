@@ -17,7 +17,10 @@
 
 run:
 	guix shell -m manifest.scm -- \
-		guile -L ./src -c '((@(guile-show-hub main) main))' 
+		guile -L ./src -c '((@(guile-show-hub main) main))'
+
+dev:
+	watchexec -i "dist/**" -r -e scm -- "make run"
 
 fmt:
 	find . -maxdepth 8 -name "*.scm" -type f -exec guix style -f {} \;
