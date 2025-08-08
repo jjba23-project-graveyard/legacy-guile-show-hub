@@ -60,10 +60,8 @@
   (build-system guile-build-system)
   (propagated-inputs (list guile-curl))
   (inputs (list guile-3.0))
-  (synopsis
-   "")
-  (description
-   "")
+  (synopsis "")
+  (description "")
   (home-page "https://codeberg.org/jjba23/guile-show-hub")
   (license license:lgpl3+))
 

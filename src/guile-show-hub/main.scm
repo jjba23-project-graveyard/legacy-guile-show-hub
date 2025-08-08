@@ -26,9 +26,6 @@
   #:use-module (ice-9 format)
   #:use-module (ice-9 match)
   #:use-module (ice-9 regex)
-  #:use-module (sxml ssax input-parse)
-  #:use-module (sxml ssax)
-  #:use-module (sxml transform)
   #:use-module (srfi srfi-13)
   #:use-module (ice-9 popen)
   #:use-module (ice-9 textual-ports)
@@ -36,229 +33,8 @@
   #:use-module (ice-9 string-fun)
   #:use-module (ice-9 iconv)
   #:use-module (ice-9 threads)
+  #:use-module (guile-show-hub sxml)
   #:export (main))
-
-;; ====== Serialize (SXML) ======
-
-(define check-name
-  (let ((*good-cache* (make-hash-table)))
-    (lambda (name)
-      (if (not (hashq-ref *good-cache* name))
-          (let* ((str (symbol->string name))
-                 (i (string-index str #\:))
-                 (head (or (and i
-                                (substring str 0 i)) str))
-                 (tail (and i
-                            (substring str
-                                       (1+ i)))))
-            (and i
-                 (string-index (substring str
-                                          (1+ i)) #\:)
-                 (error "Invalid QName: more than one colon" name))
-            (for-each (lambda (s)
-                        (and s
-                             (or (char-alphabetic? (string-ref s 0))
-                                 (eq? (string-ref s 0) #\_)
-                                 (error "Invalid name starting character" s
-                                        name))
-                             (string-for-each (lambda (c)
-                                                (or (char-alphabetic? c)
-                                                    (string-index
-                                                     "0123456789.-_" c)
-                                                    (error
-                                                     "Invalid name character"
-                                                     c s name))) s)))
-                      (list head tail))
-            (hashq-set! *good-cache* name #t))))))
-
-;; The following two functions serialize tags and attributes. They are
-;; being used in the node handlers for the post-order function, see
-;; below.
-
-(define (attribute-value->xml value port)
-  (cond
-    ((pair? value)
-     (attribute-value->xml (car value) port)
-     (attribute-value->xml (cdr value) port))
-    ((null? value)
-     *unspecified*)
-    ((string? value)
-     (string->escaped-xml value port))
-    ((procedure? value)
-     (with-output-to-port port value))
-    (else (string->escaped-xml (call-with-output-string (lambda (port)
-                                                          (display value port)))
-                               port))))
-
-(define (attribute->xml attr value port)
-  (check-name attr)
-  (display attr port)
-  (display "=\"" port)
-  (attribute-value->xml value port)
-  (display #\" port))
-
-(define (element->xml tag attrs body port)
-  (check-name tag)
-  (display #\< port)
-  (display tag port)
-  (if attrs
-      (let lp
-        ((attrs attrs))
-        (if (pair? attrs)
-            (let ((attr (car attrs)))
-              (display #\space port)
-              (if (pair? attr)
-                  (attribute->xml (car attr)
-                                  (cdr attr) port)
-                  (error "bad attribute" tag attr))
-              (lp (cdr attrs)))
-            (if (not (null? attrs))
-                (error "bad attributes" tag attrs)))))
-  (if (pair? body)
-      (begin
-        (display #\> port)
-        (let lp
-          ((body body))
-          (cond
-            ((pair? body)
-             (sxml->xml (car body) port)
-             (lp (cdr body)))
-            ((null? body)
-             (display "</" port)
-             (display tag port)
-             (display ">" port))
-            (else (error "bad element body" tag body)))))
-      (display " />" port)))
-
-;; FIXME: ensure name is valid
-(define (entity->xml name port)
-  (display #\& port)
-  (display name port)
-  (display #\; port))
-
-;; FIXME: ensure tag and str are valid
-(define (pi->xml tag str port)
-  (display "<?" port)
-  (display tag port)
-  (display #\space port)
-  (display str port)
-  (display "?>" port))
-
-(define* (sxml->xml tree
-                    #:optional (port (current-output-port))
-                    (escape? #f))
-  "Serialize the sxml tree @var{tree} as XML. The output will be written
-to the current output port, unless the optional argument @var{port} is
-present."
-  (cond
-    ((pair? tree)
-     (if (symbol? (car tree))
-         ;; An element.
-         (let ((tag (car tree)))
-           (case tag
-             ((*TOP*)
-              (sxml->xml (cdr tree) port escape?))
-             ((*ENTITY*)
-              (if (and (list? (cdr tree))
-                       (= (length (cdr tree)) 1))
-                  (entity->xml (cadr tree) port)
-                  (error "bad *ENTITY* args"
-                         (cdr tree))))
-             ((*PI*)
-              (if (and (list? (cdr tree))
-                       (= (length (cdr tree)) 2))
-                  (pi->xml (cadr tree)
-                           (caddr tree) port)
-                  (error "bad *PI* args"
-                         (cdr tree))))
-             (else (let* ((elems (cdr tree))
-                          (attrs (and (pair? elems)
-                                      (pair? (car elems))
-                                      (eq? '@
-                                           (caar elems))
-                                      (cdar elems))))
-                     (element->xml tag attrs
-                                   (if attrs
-                                       (cdr elems) elems) port)))))
-         ;; A nodelist.
-         (for-each (lambda (x)
-                     (sxml->xml x port)) tree)))
-    ((string? tree)
-     (if escape?
-         (string->escaped-xml tree port)
-         (display tree port)))
-    ((null? tree)
-     *unspecified*)
-    ((not tree)
-     *unspecified*)
-    ((eqv? tree #t)
-     *unspecified*)
-    ((procedure? tree)
-     (with-output-to-port port tree))
-    (else (when escape?
-            (string->escaped-xml (call-with-output-string (lambda (port)
-                                                            (display tree port)))
-                                 port)))))
-
-(define (sxml->string sxml)
-  "Detag an sxml tree @var{sxml} into a string. Does not perform any
-formatting."
-  (string-concatenate-reverse (foldts (lambda (seed tree)
-                                        ;; fdown
-                                        '())
-                                      (lambda (seed kid-seed tree)
-                                        ;; fup
-                                        (append! kid-seed seed))
-                                      (lambda (seed tree)
-                                        ;; fhere
-                                        (if (string? tree)
-                                            (cons tree seed) seed))
-                                      '() sxml)))
-
-(define (make-char-quotator char-encoding)
-  (let ((bad-chars (list->char-set (map car char-encoding))))
-    
-    ;; Check to see if str contains one of the characters in charset,
-    ;; from the position i onward. If so, return that character's index.
-    ;; otherwise, return #f
-    (define (index-cset str i charset)
-      (string-index str charset i))
-
-    ;; The body of the function
-    (lambda (str port)
-      (let ((bad-pos (index-cset str 0 bad-chars)))
-        (if (not bad-pos)
-            (display str port) ;str had all good chars
-            (let loop
-              ((from 0)
-               (to bad-pos))
-              (cond
-                ((>= from
-                     (string-length str))
-                 *unspecified*)
-                ((not to)
-                 (display (substring str from
-                                     (string-length str)) port))
-                (else (let ((quoted-char (cdr (assv (string-ref str to)
-                                                    char-encoding)))
-                            (new-to (index-cset str
-                                                (+ 1 to) bad-chars)))
-                        (if (< from to)
-                            (display (substring str from to) port))
-                        (display quoted-char port)
-                        (loop (1+ to) new-to))))))))))
-
-;; Given a string, check to make sure it does not contain characters
-;; such as '<' or '&' that require encoding. Return either the original
-;; string, or a list of string fragments with special characters
-;; replaced by appropriate character entities.
-
-(define string->escaped-xml
-  (make-char-quotator '((#\< . "&lt;") (#\> . "&gt;")
-                        (#\& . "&amp;")
-                        (#\" . "&quot;"))))
-
-;; ================================
 
 (define guile-xyz-uri
   (make-parameter
@@ -342,6 +118,7 @@ formatting."
 (define* (html-package-details details)
   `((div (@ (style ,(mk-style '((border-radius . "1em") (padding . "1em")
                                 (margin-bottom . "1em")
+                                (box-shadow . "var(--simple-shadow)")
                                 (background-color . "#f5e9cb")
                                 (border . "1px solid var(--fg-faint-color)")
                                 (max-width . "86ch")
@@ -361,7 +138,7 @@ formatting."
                                 (onMouseOut "this.style.color='#484431'")
                                 (href ,(car (assoc-ref details
                                                        'home-page))))
-                             (h3 (@ (style ,(mk-style '((font-size . larger)))))
+                             (h3 (@ (style ,(mk-style '((font-size . x-large)))))
                                  ,(car (assoc-ref details
                                                   'name)))))
                         `((h3 ,(car (assoc-ref details
@@ -373,29 +150,30 @@ formatting."
                                    'version))))
          ,(if (car (assoc-ref details
                               'synopsis))
-              `((em (@ (style ,(mk-style '((font-size . medium)))))
+              `((em (@ (style ,(mk-style '((font-size . large)))))
                     ,(latex-to-html (car (car (assoc-ref details
                                                          'synopsis))))))
               '())
          ,(if (car (assoc-ref details
                               'description))
-              `((p (@ (style ,(mk-style '((font-size . medium)
+              `((p (@ (style ,(mk-style '((font-size . large)
                                           (font-family . "var(--serif-font)")
-                                          (white-space . break-spaces)
+                                          (white-space . wrap)
+                                          (text-align . justify)
                                           (max-width . "70ch")))))
                    ,(latex-to-html (car (car (assoc-ref details
                                                         'description))))))
               '())
          ,(if (car (assoc-ref details
                               'license))
-              `((p (@ (style ,(mk-style '((font-size . small)
+              `((p (@ (style ,(mk-style '((font-size . medium)
                                           (font-family . "var(--serif-font)")
                                           (max-width . "70ch")))))
                    ,(car (assoc-ref details
                                     'license))))
               '())
          (details (summary (@ (style ,(mk-style '((cursor . pointer)))))
-                           (small (@ (style ,(mk-style '((font-size . small)))))
+                           (small (@ (style ,(mk-style '((font-size . medium)))))
                                   "more details"))
                   (div (@ (style ,(mk-style '((padding . "1.2em")
                                               (display . flex)
@@ -403,9 +181,9 @@ formatting."
                                               (gap . "1.2em")))))
                        ,(if (car (assoc-ref details
                                             'home-page))
-                            `((div (span (@ (style ,(mk-style '((font-size . small)))))
+                            `((div (span (@ (style ,(mk-style '((font-size . medium)))))
                                          "home-page: ")
-                                   (a (@ (style ,(mk-style '((font-size . small)
+                                   (a (@ (style ,(mk-style '((font-size . medium)
                                                              (color . "var(--fg-alt-color)"))))
                                          (href ,(car (assoc-ref details
                                                                 'home-page))))
@@ -414,7 +192,7 @@ formatting."
                             '())
                        ,(if (car (assoc-ref details
                                             'build-system))
-                            `((div (span (@ (style ,(mk-style '((font-size . small)))))
+                            `((div (span (@ (style ,(mk-style '((font-size . medium)))))
                                          "build-system: ")
                                    (span (@ (style ,(mk-style '((font-size . medium)
                                                                 (font-family . "var(--mono-font)")))))
@@ -480,6 +258,23 @@ formatting."
               (mk-style styles)
               (string-drop-right (string-drop (match:substring m) 9) 1)))))
 
+(define latex-acronym-pattern
+  (make-parameter "@acronym\\{[^}]+\\}{1}"))
+
+(define latex-acronym-replacement
+  (make-parameter "~a (~a)"))
+
+(define latex-acronym-replacement-procedure
+  (lambda ()
+    (lambda (m)
+      (let* ((match-acronym (string-drop-right (string-drop (match:substring m)
+                                                            9) 1))
+             (acronym-parts (string-split match-acronym #\,)))
+        (format #f
+                (latex-acronym-replacement)
+                (car acronym-parts)
+                (string-trim-both (cadr acronym-parts)))))))
+
 (define latex-itemize-pattern
   (make-parameter "@itemize(.|\\r|\\n)*?@end\\sitemize"))
 
@@ -536,7 +331,27 @@ formatting."
                 (latex-url-replacement)
                 (mk-style styles) the-url the-title)))))
 
-(define* (latex-to-html str
+(define latex-uref-pattern
+  (make-parameter "@uref\\{[^}]+\\}{1}"))
+
+(define latex-uref-replacement
+  (make-parameter "<a style=\"~a\" href=\"~a\">~a</a>"))
+
+(define latex-uref-replacement-procedure
+  (lambda (styles)
+    (lambda (m)
+      (let* ((uri-and-title (string-drop-right (string-drop (match:substring m)
+                                                            6) 1))
+             (frags (string-split uri-and-title #\,))
+             (the-url (if (> (length frags) 0)
+                          (car frags) uri-and-title))
+             (the-title (if (> (length frags) 1)
+                            (string-trim-both (cadr frags)) uri-and-title)))
+        (format #f
+                (latex-uref-replacement)
+                (mk-style styles) the-url the-title)))))
+
+(define* (latex-to-html raw-str
                         #:key (code-styles '((font-family . "var(--mono-font)")
                                              (font-size . medium)))
                         (math-styles '((font-family . "var(--mono-font)")
@@ -555,7 +370,9 @@ formatting."
                         (url-styles '((color . "var(--fg-alt-color)")
                                       (font-family . "var(--sans-font)")))
                         (itemize-styles '()))
-  (let* ((parse-functions (list (lambda (x)
+  (let* ((str (if (string? raw-str) raw-str
+                  (format #f "~a" raw-str)))
+         (parse-functions (list (lambda (x)
                                   (regexp-substitute/global #f
                                                             (latex-code-pattern)
                                                             x
@@ -595,6 +412,16 @@ formatting."
                                                             (latex-url-replacement-procedure
                                                              url-styles)
                                                             'post))
+
+                                (lambda (x)
+                                  (regexp-substitute/global #f
+                                                            (latex-uref-pattern)
+                                                            x
+                                                            'pre
+                                                            (latex-uref-replacement-procedure
+                                                             url-styles)
+                                                            'post))
+
                                 (lambda (x)
                                   (regexp-substitute/global #f
                                                             (latex-itemize-pattern)
@@ -602,6 +429,13 @@ formatting."
                                                             'pre
                                                             (latex-itemize-replacement-procedure
                                                              itemize-styles)
+                                                            'post))
+                                (lambda (x)
+                                  (regexp-substitute/global #f
+                                                            (latex-acronym-pattern)
+                                                            x
+                                                            'pre
+                                                            (latex-acronym-replacement-procedure)
                                                             'post)))))
     (fold (lambda (fun accum)
             (apply fun
@@ -648,14 +482,14 @@ formatting."
                        "https://jointhefreeworld.org/ggg/dist/license-agpl3+.svg")
                       (alt "GNU AGPL v3+")))))))
 
-(define (top-section2)
+(define (footer-section)
   `((div (@ (style ,(mk-style '((display . flex) (margin . "0.8em")
                                 (flex-direction . column)
                                 (gap . "1em")))))
          (p (@ (style ,(mk-style '((font-size . medium)))))
             "Copyright © Josep Bigorra &lt;jjbigorra@gmail.com&gt;")
          (div (@ (style ,(mk-style '((max-width . "70ch")))))
-              (em (@ (style ,(mk-style '((font-size . small)))))
+              (em (@ (style ,(mk-style '((font-size . medium)))))
                "guile-show-hub is free software licensed under the GNU Affero General Public License v3 or newer"))
          (em (small ,(format #f "last updated: ~a"
                              (strftime "%c"
@@ -666,13 +500,16 @@ formatting."
                                                (color . "var(--fg-alt-color)")))))
                         ,(guile-xyz-uri))))
 
-         (div (em (@ (style ,(mk-style '((font-size . small)))))
+         (div (em (@ (style ,(mk-style '((font-size . medium)))))
                   "find the source code here: ")
-              (a (@ (style ,(mk-style '((font-size . small)
+              (a (@ (style ,(mk-style '((font-size . medium)
                                         (font-family . "var(--sans-font)")
                                         (color . "var(--fg-alt-color)"))))
                     (href "https://codeberg.org/jjba23/guile-show-hub"))
                  "https://codeberg.org/jjba23/guile-show-hub")))))
+
+(define destination-dir
+  (make-parameter "./dist"))
 
 (define (main)
   (display "\nStarting Guile Show Hub")
@@ -698,11 +535,13 @@ formatting."
   --serif-font: \"IBM Plex Serif\", serif;
   --mono-font: \"IBM Plex Mono\", monospace;
 
-  --fg-color: #484431;
-  --fg-alt-color: #80431a;
-  --fg-faint-color: #dcdcdc;
-  --bg-color: #fff7e9;
-  --bg-alt-color: #f5e9cb;
+  --bg-color: #fbf1c7;
+  --bg-alt-color: #ebdbb2;
+  --bg-faint-color: #dbd1c7;
+  --fg-color: #3c3836;
+  --fg-alt-color: #282828;
+  --fg-faint-color: rgba(40,40,40,0.6);
+  --simple-shadow: 5px 5px 3px rgba(40,40,40,0.3);
 }
 ")))
          (hh `(html (@ (style ,(mk-style '((background-color . "var(--bg-color)")
@@ -716,18 +555,26 @@ formatting."
                                                            (gap . "1em")
                                                            (padding . "1em")
                                                            (justify-content . space-between)))))
-                                    (div ,(top-section)
-                                         ,(top-section2))
+                                    (div ,(top-section))
                                     ,(project-logo))
                                (hr (@ (style ,(mk-style '((color . "var(--fg-faint-color)"))))))
                                (h2 (@ (style ,(mk-style '((font-family . "var(--sans-font)")))))
                                    ,(format #f "packages (~a items)"
                                             (length package-details)))
                                (div (@ (style ,(mk-style '((margin . "0.8em")))))
-                                    ,(render-package-details package-details))))))
+                                    ,(render-package-details package-details))
+                               (hr (@ (style ,(mk-style '((color . "var(--fg-faint-color)"))))))
+                               ,(footer-section)))))
          (page `("<!DOCTYPE html>" ,hh)))
     
-    (with-output-to-file "index.html"
+    (catch #t
+           (lambda ()
+             (mkdir (destination-dir)))
+           (lambda (key . args)
+             #t))
+    (with-output-to-file (format #f "~a/index.html"
+                                 (destination-dir))
       (lambda ()
         (sxml->xml page)))))
+
 

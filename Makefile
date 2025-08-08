@@ -17,9 +17,9 @@
 
 run:
 	guix shell -m manifest.scm -- \
-		guile -L ./src -c '((@(guile-show-hub main) main))' 
+		guile -L ./src -c '((@(guile-show-hub main) main))'
 
-fmt:
+format:
 	find . -maxdepth 8 -name "*.scm" -type f -exec guix style -f {} \;
 
 # Development REPL
@@ -35,4 +35,11 @@ deploy:
 	CI=true make run
 	rm -rfv /srv/http/jointhefreeworld.org/guile-show-hub
 	mkdir -p /srv/http/jointhefreeworld.org/guile-show-hub
-	mv -v index.html /srv/http/jointhefreeworld.org/guile-show-hub/
+	mv -v ./dist/index.html /srv/http/jointhefreeworld.org/guile-show-hub/
+
+serve:
+	darkhttpd ./dist --port 50074
+
+
+dev: format
+		watchexec -i "dist/**" -r -e scm,css,js -- "make run && make serve"
